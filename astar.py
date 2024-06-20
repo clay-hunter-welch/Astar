@@ -1,9 +1,11 @@
 import pygame
 from queue import PriorityQueue
+pygame.init()
 
 BOARD_PIXEL_WIDTH = 800
 WINDOW = pygame.display.set_mode((BOARD_PIXEL_WIDTH, BOARD_PIXEL_WIDTH))
 pygame.display.set_caption("A* Path Finding Algorithm")
+game_font = pygame.font.Font(pygame.font.get_default_font(), 20)
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -85,9 +87,6 @@ class Node:
         if self.col > 0 and not grid[self.row][self.col - 1].is_barrier():  # left
             self.neighbors.append(grid[self.row][self.col - 1])
 
-    def __lt__(self, other) -> bool:
-        return False
-
 
 def h(node_coord1: tuple, node_coord2: tuple) -> int:
     x1, y1 = node_coord1
@@ -95,7 +94,7 @@ def h(node_coord1: tuple, node_coord2: tuple) -> int:
     return abs(x1 - x2) + abs(y1 - y2)
 
 
-def reconstruct_path(came_from, current, lambda_draw):
+def reconstruct_path(came_from, current, lambda_draw) -> None:
     while current in came_from:
         current = came_from[current]
         current.make_path()
@@ -172,13 +171,17 @@ def draw_grid_lines(window: pygame.display, rows: int, board_pixel_width: int) -
         pygame.draw.line(window, GRAY, (i * gap, 0), (i * gap, board_pixel_width))
 
 
-def draw(window, grid, rows, board_pixel_width):
+def draw(window, grid, rows, board_pixel_width, start_pos, end_pos) -> None:
     window.fill(WHITE)
     for row in grid:
         for node in row:
             node.draw(window)
 
     draw_grid_lines(window, rows, board_pixel_width)
+    if start_pos:
+        draw_text(window, "S", game_font, YELLOW, start_pos)
+    if end_pos:
+        draw_text(window, "E", game_font, RED, end_pos)
 
     pygame.display.update()
 
@@ -200,19 +203,25 @@ def get_node_from_mouseclick(board_pixel_width, grid, rows) -> Node:
     return node
 
 
-def reset_board(board_pixel_width, rows):
+def reset_board(board_pixel_width, rows) -> tuple:
     grid = make_grid(rows, board_pixel_width)
     return None, None, grid
 
 
-def main(window, board_pixel_width):
+def draw_text(window, text: str, font, text_col: tuple, node: Node):
+    img_surface = font.render(text, True, text_col)
+    window.blit(img_surface, (node.x, node.y))
+    #pygame.display.update()
+
+def main(window, board_pixel_width) -> None:
     rows = 50
     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
 
     run = True
 
     while run:
-        draw(window, grid, rows, board_pixel_width)
+        draw(window, grid, rows, board_pixel_width, start_pos, end_pos)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -245,7 +254,7 @@ def main(window, board_pixel_width):
                         for node in row:
                             node.update_neighbors(grid)
 
-                    astar(lambda: draw(window, grid, rows, board_pixel_width), grid, start_pos, end_pos)
+                    astar(lambda: draw(window, grid, rows, board_pixel_width, start_pos, end_pos), grid, start_pos, end_pos)
 
                 if event.key == pygame.K_c:
                     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
