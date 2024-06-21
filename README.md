@@ -1,4 +1,4 @@
-Implementation of the A* pathfinding algortihm via pygame.
+Implementation of the A* pathfinding algorithm via pygame.
 
 Instructions:
 
