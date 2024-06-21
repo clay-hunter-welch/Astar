@@ -1,11 +1,12 @@
 import pygame
 from queue import PriorityQueue
+
 pygame.init()
 
 BOARD_PIXEL_WIDTH = 800
 WINDOW = pygame.display.set_mode((BOARD_PIXEL_WIDTH, BOARD_PIXEL_WIDTH))
-pygame.display.set_caption("A* Path Finding Algorithm")
-game_font = pygame.font.Font(pygame.font.get_default_font(), 20)
+pygame.display.set_caption("A* Pathfinding...Left click : set start, end, barriers...Right click: reset node...'Space': start...'c': clear board")
+game_font = pygame.font.Font(pygame.font.get_default_font(), 10)
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -69,8 +70,22 @@ class Node:
     def make_path(self) -> None:
         self.color = PURPLE
 
-    def draw(self, window: pygame.display) -> None:
-        pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.width))
+    def draw(self, window: pygame.display, color1=None, color2=None) -> None:
+        if not color1:
+            pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.width))
+        else:
+            # checkerboard
+            color = color1
+            for i in range(3):
+                for j in range(3):
+                    pygame.draw.rect(window, color, (self.x + (i * self.width // 3), self.y + (j * self.width // 3),
+                                                     self.width // 3, self.width // 3))
+                    if color == color1:
+                        color = color2
+                    else:
+                        color = color1
+
+            pass
 
     def update_neighbors(self, grid):
         self.neighbors = []
@@ -175,13 +190,20 @@ def draw(window, grid, rows, board_pixel_width, start_pos, end_pos) -> None:
     window.fill(WHITE)
     for row in grid:
         for node in row:
-            node.draw(window)
+            if node is start_pos:
+                node.draw(window, GREEN, WHITE)
+            elif node is end_pos:
+                node.draw(window, BLACK, WHITE)
+            else:
+                node.draw(window)
 
     draw_grid_lines(window, rows, board_pixel_width)
-    if start_pos:
-        draw_text(window, "S", game_font, YELLOW, start_pos)
-    if end_pos:
-        draw_text(window, "E", game_font, RED, end_pos)
+
+    # add text to start and end positions.  commenting out as it doesn't look great.
+    #if start_pos:
+    #    draw_text(window, "S", game_font, BLACK, start_pos)
+    #if end_pos:
+    #    draw_text(window, "E", game_font, RED, end_pos)
 
     pygame.display.update()
 
@@ -210,8 +232,13 @@ def reset_board(board_pixel_width, rows) -> tuple:
 
 def draw_text(window, text: str, font, text_col: tuple, node: Node):
     img_surface = font.render(text, True, text_col)
+    window.blit(img_surface, (node.x + (node.width // 3), node.y + (node.width // 3)))
+
+
+def draw_checkerboard(window, color1: tuple, color2: tuple, node: Node):
+    # img_surface = font.render(text, True, text_col)
     window.blit(img_surface, (node.x, node.y))
-    #pygame.display.update()
+
 
 def main(window, board_pixel_width) -> None:
     rows = 50
@@ -254,7 +281,8 @@ def main(window, board_pixel_width) -> None:
                         for node in row:
                             node.update_neighbors(grid)
 
-                    astar(lambda: draw(window, grid, rows, board_pixel_width, start_pos, end_pos), grid, start_pos, end_pos)
+                    astar(lambda: draw(window, grid, rows, board_pixel_width, start_pos, end_pos), grid, start_pos,
+                          end_pos)
 
                 if event.key == pygame.K_c:
                     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
