@@ -6,7 +6,7 @@ pygame.init()
 BOARD_PIXEL_WIDTH = 800
 WINDOW = pygame.display.set_mode((BOARD_PIXEL_WIDTH, BOARD_PIXEL_WIDTH))
 pygame.display.set_caption("A* Pathfinding Visualization")
-game_font = pygame.font.Font(pygame.font.get_default_font(), 24)
+game_font = pygame.font.SysFont("Trebuchet", 36)
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -22,8 +22,8 @@ TURQUOISE = (64, 224, 208)
 instructions = [
     "A* Pathfinder Visualization",
     "Instructions:",
-    "1. Left-mouse click a node to set start and end points.",
-    "2. Then, left-mouse click to place obstacle blocks.",
+    "1. Left-mouse click a square to set start point, again for end.",
+    "2. Then, left-mouse click to place black obstacle blocks.",
     "3. Right-mouse click to reset any block to white.",
     "4. Press 'Space' to start the pathfinder.",
     "5. When done, press 'c' to reset the board or 'q' to quit.",
@@ -83,23 +83,42 @@ class Node:
         self.color = PURPLE
 
     def draw_node(self, window: pygame.display, color1=None, color2=None) -> None:
-        if not color1:
-            pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.width))
-        else:
-            # checkerboard
-            color = color1
-            for i in range(3):
-                for j in range(3):
-                    pygame.draw.rect(window, color, (self.x + (i * self.width // 3), self.y + (j * self.width // 3),
-                                                     self.width // 3, self.width // 3))
-                    if color == color1:
-                        color = color2
-                    else:
-                        color = color1
+        """
+        Node draws itself to board
+        :param window: pygame.display object
+        :param color1: optional: if present, draw checkerboard.  If absent, draw node.color
+        :param color2: optional: only present if color1 supplied. second checkerboard color
+        :return: None
+        """
+        checkerboard_scale = 4
 
-            pass
+        def swap_color(current_color):
+            if current_color == color1:
+                current_color = color2
+            else:
+                current_color = color1
+            return current_color
+
+        if not color1:  # simple draw
+            pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.width))
+        else:  # checkerboard draw
+            color = color1
+            for i in range(checkerboard_scale):
+                for j in range(checkerboard_scale):
+                    pygame.draw.rect(window, color, (self.x + (i * self.width // checkerboard_scale),
+                                                     self.y + (j * self.width // checkerboard_scale),
+                                                     self.width // checkerboard_scale,
+                                                     self.width // checkerboard_scale))
+                    color = swap_color(color)
+                if not checkerboard_scale%2: # if the checkerboard is even x even, perform manual swap at end of column
+                    color = swap_color(color)
 
     def update_neighbors(self, grid):
+        """
+        Scan for valid NSEW neighbors for each node, save results on each node itself
+        :param grid:
+        :return: None
+        """
         self.neighbors = []
         # check down:(row + 1,col), up:(row - 1,col), right:(row,col + 1), and left:(row,col - 1)
         if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier():  # down
@@ -116,12 +135,25 @@ class Node:
 
 
 def h(node_coord1: tuple, node_coord2: tuple) -> int:
+    """
+    Manhattan heuristic distance calculation
+    :param node_coord1: current node (x, y)
+    :param node_coord2: end node (x, y)
+    :return:
+    """
     x1, y1 = node_coord1
     x2, y2 = node_coord2
     return abs(x1 - x2) + abs(y1 - y2)
 
 
 def reconstruct_path(came_from, current, lambda_draw) -> None:
+    """
+    Pathfinding complete, work from endpoint back along the came_from list to draw the shortest path to the start point
+    :param came_from: list of nodes in path
+    :param current: begins at end point, crawls back the came_from list
+    :param lambda_draw: lambda-packaged call to draw()
+    :return:
+    """
     while current in came_from:
         current = came_from[current]
         current.make_path()
@@ -176,8 +208,13 @@ def astar(lambda_draw, grid, start_pos, end_pos) -> bool:
 
 
 def make_grid(rows: int, board_pixel_width: int) -> list:
+    """
+    Generate the grid data structure: a list of lists of Nodes
+    :param rows:
+    :param board_pixel_width:
+    :return: grid structure
+    """
     grid = []
-    # 1 row repeated
     node_size = board_pixel_width // rows
 
     for i in range(rows):
@@ -190,7 +227,13 @@ def make_grid(rows: int, board_pixel_width: int) -> list:
 
 
 def draw_grid_lines(window: pygame.display, rows: int, board_pixel_width: int) -> None:
-    # 1 row repeated
+    """
+    Draw grid lines for node blocks on pygame board
+    :param window: pygame.display
+    :param rows: int
+    :param board_pixel_width: int
+    :return: None
+    """
     gap = board_pixel_width // rows
 
     for i in range(rows):
@@ -199,6 +242,17 @@ def draw_grid_lines(window: pygame.display, rows: int, board_pixel_width: int) -
 
 
 def draw(window, grid, rows, board_pixel_width, start_pos, end_pos, update=True) -> None:
+    """
+    Draw board from scratch (per pygame tick)
+    :param window: pygame.display
+    :param grid:
+    :param rows:
+    :param board_pixel_width:
+    :param start_pos: Node
+    :param end_pos: Node
+    :param update: bool (defaults to true, disable to blit extra info post-draw, update manually later)
+    :return: None
+    """
     window.fill(WHITE)
     for row in grid:
         for node in row:
@@ -216,7 +270,13 @@ def draw(window, grid, rows, board_pixel_width, start_pos, end_pos, update=True)
 
 
 def get_clicked_pos(pos, rows, board_pixel_width) -> tuple:
-    # 1 row repeated
+    """
+    Take pixel (x, y) and return (row, col)
+    :param pos: (x, y) tuple
+    :param rows:
+    :param board_pixel_width:
+    :return: (row, col) tuple
+    """
     gap = board_pixel_width // rows
 
     y, x = pos
@@ -226,6 +286,13 @@ def get_clicked_pos(pos, rows, board_pixel_width) -> tuple:
 
 
 def get_node_from_mouseclick(board_pixel_width, grid, rows) -> Node:
+    """
+    Receives basic board info, queries pygame as to mouse position, returns node block associated with that position
+    :param board_pixel_width:
+    :param grid:
+    :param rows:
+    :return: Node
+    """
     pos = pygame.mouse.get_pos()
     row, col = get_clicked_pos(pos, rows, board_pixel_width)
     node = grid[row][col]
@@ -233,6 +300,12 @@ def get_node_from_mouseclick(board_pixel_width, grid, rows) -> Node:
 
 
 def reset_board(board_pixel_width, rows) -> tuple:
+    """
+    Reset all grid values, set start and end pos to none
+    :param board_pixel_width:
+    :param rows:
+    :return: tuple
+    """
     grid = make_grid(rows, board_pixel_width)
     return None, None, grid
 
@@ -241,6 +314,7 @@ def main(window, board_pixel_width) -> None:
     rows = 50
     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
 
+    # 1. begin by displaying instructions
     run = True
 
     while run:
@@ -261,6 +335,7 @@ def main(window, board_pixel_width) -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 run = False
 
+    # 2. Enter the game loop
     run = True
 
     while run:
@@ -270,7 +345,7 @@ def main(window, board_pixel_width) -> None:
             if event.type == pygame.QUIT:
                 run = False
 
-            if pygame.mouse.get_pressed()[0]:  # left click
+            if pygame.mouse.get_pressed()[0]:  # left click: set node as start position, end position, or barrier
                 node = get_node_from_mouseclick(board_pixel_width, grid, rows)
 
                 if not start_pos and node != end_pos:
@@ -282,7 +357,7 @@ def main(window, board_pixel_width) -> None:
                 elif node != start_pos and node != end_pos:
                     node.make_barrier()
 
-            elif pygame.mouse.get_pressed()[2]:  # right click
+            elif pygame.mouse.get_pressed()[2]:  # right click: reset node identity to unset
                 node = get_node_from_mouseclick(board_pixel_width, grid, rows)
                 node.reset()
 
@@ -292,8 +367,7 @@ def main(window, board_pixel_width) -> None:
                     end_pos = None
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and start_pos and end_pos:
-                    # run algo
+                if event.key == pygame.K_SPACE and start_pos and end_pos:  # Space bar: begin pathfinding
                     for row in grid:
                         for node in row:
                             node.update_neighbors(grid)
@@ -301,10 +375,10 @@ def main(window, board_pixel_width) -> None:
                     astar(lambda: draw(window, grid, rows, board_pixel_width, start_pos, end_pos), grid, start_pos,
                           end_pos)
 
-                if event.key == pygame.K_c:
+                if event.key == pygame.K_c:  # c key: clear board
                     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
 
-                if event.key == pygame.K_q:
+                if event.key == pygame.K_q:  # q key: quit
                     run = False
 
     pygame.quit()
