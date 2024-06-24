@@ -9,3 +9,5 @@ Right click any node: reset node
 Space: Begin pathfinding
 
 c: clear board
+
+q: quit
