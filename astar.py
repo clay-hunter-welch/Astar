@@ -1,12 +1,12 @@
-import pygame
+import pygame, sys
 from queue import PriorityQueue
 
 pygame.init()
 
 BOARD_PIXEL_WIDTH = 800
 WINDOW = pygame.display.set_mode((BOARD_PIXEL_WIDTH, BOARD_PIXEL_WIDTH))
-pygame.display.set_caption("A* Pathfinding...Left click : set start, end, barriers...Right click: reset node...'Space': start...'c': clear board")
-game_font = pygame.font.Font(pygame.font.get_default_font(), 10)
+pygame.display.set_caption("A* Pathfinding Visualization")
+game_font = pygame.font.Font(pygame.font.get_default_font(), 24)
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -18,6 +18,18 @@ PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
 GRAY = (128, 128, 128)
 TURQUOISE = (64, 224, 208)
+
+instructions = [
+    "A* Pathfinder Visualization",
+    "Instructions:",
+    "1. Left-mouse click a node to set start and end points.",
+    "2. Then, left-mouse click to place obstacle blocks.",
+    "3. Right-mouse click to reset any block to white.",
+    "4. Press 'Space' to start the pathfinder.",
+    "5. When done, press 'c' to reset the board or 'q' to quit.",
+    "",
+    "Click anywhere on the board to begin."
+]
 
 
 class Node:
@@ -70,7 +82,7 @@ class Node:
     def make_path(self) -> None:
         self.color = PURPLE
 
-    def draw(self, window: pygame.display, color1=None, color2=None) -> None:
+    def draw_node(self, window: pygame.display, color1=None, color2=None) -> None:
         if not color1:
             pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.width))
         else:
@@ -186,26 +198,21 @@ def draw_grid_lines(window: pygame.display, rows: int, board_pixel_width: int) -
         pygame.draw.line(window, GRAY, (i * gap, 0), (i * gap, board_pixel_width))
 
 
-def draw(window, grid, rows, board_pixel_width, start_pos, end_pos) -> None:
+def draw(window, grid, rows, board_pixel_width, start_pos, end_pos, update=True) -> None:
     window.fill(WHITE)
     for row in grid:
         for node in row:
             if node is start_pos:
-                node.draw(window, GREEN, WHITE)
+                node.draw_node(window, GREEN, WHITE)
             elif node is end_pos:
-                node.draw(window, BLACK, WHITE)
+                node.draw_node(window, BLACK, WHITE)
             else:
-                node.draw(window)
+                node.draw_node(window)
 
     draw_grid_lines(window, rows, board_pixel_width)
 
-    # add text to start and end positions.  commenting out as it doesn't look great.
-    #if start_pos:
-    #    draw_text(window, "S", game_font, BLACK, start_pos)
-    #if end_pos:
-    #    draw_text(window, "E", game_font, RED, end_pos)
-
-    pygame.display.update()
+    if update:
+        pygame.display.update()
 
 
 def get_clicked_pos(pos, rows, board_pixel_width) -> tuple:
@@ -230,19 +237,29 @@ def reset_board(board_pixel_width, rows) -> tuple:
     return None, None, grid
 
 
-def draw_text(window, text: str, font, text_col: tuple, node: Node):
-    img_surface = font.render(text, True, text_col)
-    window.blit(img_surface, (node.x + (node.width // 3), node.y + (node.width // 3)))
-
-
-def draw_checkerboard(window, color1: tuple, color2: tuple, node: Node):
-    # img_surface = font.render(text, True, text_col)
-    window.blit(img_surface, (node.x, node.y))
-
-
 def main(window, board_pixel_width) -> None:
     rows = 50
     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
+
+    run = True
+
+    while run:
+        draw(window, grid, rows, board_pixel_width, start_pos, end_pos, False)
+
+        y_offset = 50
+        for line in instructions:
+            text_surface = game_font.render(line, True, BLACK)
+            window.blit(text_surface, (50, y_offset))
+            y_offset += 40
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                run = False
 
     run = True
 
@@ -286,6 +303,9 @@ def main(window, board_pixel_width) -> None:
 
                 if event.key == pygame.K_c:
                     start_pos, end_pos, grid = reset_board(board_pixel_width, rows)
+
+                if event.key == pygame.K_q:
+                    run = False
 
     pygame.quit()
 
